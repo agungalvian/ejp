@@ -4,6 +4,7 @@ import {
   Clock, DollarSign, BookOpen, Users, ChevronRight, Layers, Shield, Contact,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import logoImg from '../../assets/logo.png';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -35,8 +36,8 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-surface-300">
-        <div className="w-9 h-9 rounded-lg bg-brand-gradient flex items-center justify-center shadow-glow-blue flex-shrink-0">
-          <span className="text-white font-bold text-sm">EJP</span>
+        <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center p-1 shadow-glow-blue flex-shrink-0">
+          <img src={logoImg} alt="EJP Logo" className="w-full h-full object-contain" />
         </div>
         <div className="min-w-0">
           <p className="text-white font-bold text-sm leading-tight truncate">El Jaya Pondasi</p>

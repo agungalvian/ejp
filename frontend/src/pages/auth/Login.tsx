@@ -5,6 +5,7 @@ import { Eye, EyeOff, Loader2, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
+import logoImg from '../../assets/logo.png';
 
 interface LoginForm {
   email: string;
@@ -42,8 +43,8 @@ export default function LoginPage() {
         <div className="card p-8">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-brand-gradient flex items-center justify-center shadow-glow-blue mb-4">
-              <Building2 size={28} className="text-white" />
+            <div className="w-24 h-24 rounded-2xl bg-white flex items-center justify-center p-2 shadow-glow-blue mb-4">
+              <img src={logoImg} alt="El Jaya Pondasi Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-2xl font-bold text-white text-gradient">El Jaya Pondasi</h1>
             <p className="text-slate-400 text-sm mt-1">Sistem ERP Konstruksi & Rental Alat</p>
