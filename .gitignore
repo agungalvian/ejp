@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Uploads
+backend/uploads/
+
+# IDE
+.vscode/
+.idea/
+*.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Prisma (keep schema, ignore generated client)
+backend/node_modules/
+frontend/node_modules/

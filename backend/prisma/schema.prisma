@@ -1,0 +1,557 @@
+// =============================================================================
+// ERP Construction & Heavy Equipment Rental — Prisma Schema
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// MODULE 1 — USERS & CONTACTS
+// =============================================================================
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  permissions Json     // e.g. { "projects": "write", "invoices": "read" }
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  users       User[]
+  @@map("roles")
+}
+
+enum ContactType {
+  Client
+  Vendor
+  Both
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password_hash String
+  role_id       String
+  is_active     Boolean  @default(true)
+  employee_id   String?  @unique
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  role                Role           @relation(fields: [role_id], references: [id])
+  employee            Employee?      @relation(fields: [employee_id], references: [id])
+  transactions        Transaction[]
+  timesheets_submitted Timesheet[]   @relation("TimesheetSubmitter")
+  material_transactions MaterialTransaction[]
+
+  @@map("users")
+}
+
+model Contact {
+  id         String      @id @default(uuid())
+  name       String
+  type       ContactType
+  phone      String?
+  email      String?
+  address    String?
+  tax_id     String?     // NPWP
+  notes      String?
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
+
+  // Relations
+  projects  Project[]
+  employees Employee[]
+
+  @@map("contacts")
+}
+
+// =============================================================================
+// MODULE 2 — CONSTRUCTION & INVOICING
+// =============================================================================
+
+enum ProjectStatus {
+  Planning
+  Active
+  On_Hold
+  Completed
+  Cancelled
+}
+
+enum InvoiceType {
+  Down_Payment
+  Termin_Progress
+  Retention_Claim
+}
+
+enum InvoiceStatus {
+  Draft
+  Sent
+  Paid
+  Cancelled
+}
+
+model Project {
+  id                        String        @id @default(uuid())
+  project_code              String        @unique
+  name                      String
+  contact_id                String
+  contract_value            Decimal       @db.Decimal(18, 2)
+  down_payment_percentage   Decimal       @default(0) @db.Decimal(5, 2)
+  retention_percentage      Decimal       @default(0) @db.Decimal(5, 2)
+  start_date                DateTime?
+  end_date                  DateTime?
+  status                    ProjectStatus @default(Planning)
+  description               String?
+  created_at                DateTime      @default(now())
+  updated_at                DateTime      @updatedAt
+
+  // Relations
+  contact              Contact              @relation(fields: [contact_id], references: [id])
+  rab_budgets          RabBudget[]
+  invoices             ProjectInvoice[]
+  rental_logs          RentalLog[]
+  timesheets           Timesheet[]
+  material_transactions MaterialTransaction[]
+
+  @@map("projects")
+}
+
+model RabBudget {
+  id          String  @id @default(uuid())
+  project_id  String
+  description String
+  unit        String
+  qty         Decimal @db.Decimal(12, 3)
+  unit_price  Decimal @db.Decimal(18, 2)
+  actual_cost Decimal @default(0) @db.Decimal(18, 2)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Computed: budget_total = qty * unit_price (done in application)
+  project                   Project                     @relation(fields: [project_id], references: [id])
+  material_transaction_details MaterialTransactionDetail[]
+
+  @@map("rab_budgets")
+}
+
+model TaxParameter {
+  id         String   @id @default(uuid())
+  name       String   // e.g. "PPN 11%", "PPh 22"
+  rate       Decimal  @db.Decimal(5, 4)  // e.g. 0.1100 for 11%
+  is_enabled Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  invoice_taxes InvoiceTax[]
+
+  @@map("tax_parameters")
+}
+
+model ProjectInvoice {
+  id                 String        @id @default(uuid())
+  invoice_number     String        @unique
+  project_id         String
+  invoice_type       InvoiceType
+  amount             Decimal       @db.Decimal(18, 2)
+  tax_total          Decimal       @default(0) @db.Decimal(18, 2)
+  total_amount       Decimal       @db.Decimal(18, 2) // amount + tax_total
+  status             InvoiceStatus @default(Draft)
+  due_date           DateTime?
+  paid_date          DateTime?
+  evidence_file_path String?
+  notes              String?
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
+
+  // Relations
+  project      Project      @relation(fields: [project_id], references: [id])
+  invoice_taxes InvoiceTax[]
+
+  @@map("project_invoices")
+}
+
+model InvoiceTax {
+  id               String  @id @default(uuid())
+  invoice_id       String
+  tax_parameter_id String
+  computed_amount  Decimal @db.Decimal(18, 2)
+  created_at       DateTime @default(now())
+
+  invoice       ProjectInvoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  tax_parameter TaxParameter   @relation(fields: [tax_parameter_id], references: [id])
+
+  @@unique([invoice_id, tax_parameter_id])
+  @@map("invoice_taxes")
+}
+
+// =============================================================================
+// MODULE 3 — HEAVY EQUIPMENT RENTAL
+// =============================================================================
+
+enum EquipmentStatus {
+  Available
+  Rented
+  Maintenance
+  Retired
+}
+
+model HeavyEquipment {
+  id                String          @id @default(uuid())
+  asset_code        String          @unique
+  name              String
+  type              String          // e.g. "Excavator", "Bulldozer"
+  brand             String?
+  serial_number     String?
+  acquisition_cost  Decimal         @db.Decimal(18, 2)
+  acquisition_date  DateTime
+  useful_life_years Int
+  current_book_value Decimal        @db.Decimal(18, 2)
+  status            EquipmentStatus @default(Available)
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+
+  // Relations
+  rental_logs          RentalLog[]
+  asset_depreciations  AssetDepreciation[]
+
+  @@map("heavy_equipments")
+}
+
+model RentalLog {
+  id                String    @id @default(uuid())
+  equipment_id      String
+  project_id        String?
+  operator_name     String?
+  start_date        DateTime
+  end_date          DateTime?
+  hour_meter_start  Decimal   @db.Decimal(10, 2)
+  hour_meter_end    Decimal?  @db.Decimal(10, 2)
+  hour_meter_used   Decimal?  @db.Decimal(10, 2) // computed: end - start
+  rate_per_hour     Decimal   @db.Decimal(18, 2)
+  total_cost        Decimal?  @db.Decimal(18, 2)  // computed: hours * rate
+  notes             String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  equipment HeavyEquipment @relation(fields: [equipment_id], references: [id])
+  project   Project?       @relation(fields: [project_id], references: [id])
+
+  @@map("rental_log")
+}
+
+model AssetDepreciation {
+  id                 String   @id @default(uuid())
+  equipment_id       String
+  period_month       Int      // 1-12
+  period_year        Int
+  depreciation_amount Decimal @db.Decimal(18, 2)
+  book_value_after   Decimal  @db.Decimal(18, 2)
+  created_at         DateTime @default(now())
+
+  equipment HeavyEquipment @relation(fields: [equipment_id], references: [id])
+
+  @@unique([equipment_id, period_month, period_year])
+  @@map("asset_depreciations")
+}
+
+// =============================================================================
+// MODULE 4 — CORE ACCOUNTING (DOUBLE-ENTRY)
+// =============================================================================
+
+enum AccountType {
+  Asset
+  Liability
+  Equity
+  Revenue
+  Expense
+}
+
+enum TransactionSource {
+  Invoice
+  StockOut
+  Payroll
+  Depreciation
+  Manual
+}
+
+model Account {
+  id         String      @id @default(uuid())
+  code       String      @unique  // e.g. "1-1000"
+  name       String
+  type       AccountType
+  parent_id  String?
+  is_active  Boolean     @default(true)
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
+
+  // Self-relation for CoA hierarchy
+  parent   Account?  @relation("AccountHierarchy", fields: [parent_id], references: [id])
+  children Account[] @relation("AccountHierarchy")
+
+  // Relations
+  journal_entries JournalEntry[]
+  materials       Material[]
+
+  @@map("accounts")
+}
+
+model Transaction {
+  id                 String            @id @default(uuid())
+  date               DateTime
+  description        String
+  reference_no       String?           @unique
+  evidence_file_path String?
+  source_type        TransactionSource
+  source_id          String?           // FK to invoice/payroll period/material_transaction
+  created_by_user_id String?
+  created_at         DateTime          @default(now())
+  updated_at         DateTime          @updatedAt
+
+  // Relations
+  created_by      User?          @relation(fields: [created_by_user_id], references: [id])
+  journal_entries JournalEntry[]
+
+  @@map("transactions")
+}
+
+model JournalEntry {
+  id             String   @id @default(uuid())
+  transaction_id String
+  account_id     String
+  debit          Decimal  @default(0) @db.Decimal(18, 2)
+  credit         Decimal  @default(0) @db.Decimal(18, 2)
+  notes          String?
+  created_at     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transaction_id], references: [id], onDelete: Cascade)
+  account     Account     @relation(fields: [account_id], references: [id])
+
+  @@map("journal_entries")
+}
+
+// =============================================================================
+// MODULE 5 — INVENTORY & WAREHOUSE
+// =============================================================================
+
+enum MaterialTransactionType {
+  Stock_In
+  Stock_Out
+  Stock_Transfer
+}
+
+model Material {
+  id         String   @id @default(uuid())
+  code       String   @unique
+  name       String
+  unit       String   // e.g. "kg", "pcs", "m3"
+  unit_cost  Decimal  @db.Decimal(18, 2)
+  account_id String?  // Links to Inventory Asset account in CoA
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  account                   Account?                    @relation(fields: [account_id], references: [id])
+  inventory_stocks          InventoryStock[]
+  material_transaction_details MaterialTransactionDetail[]
+
+  @@map("materials")
+}
+
+model Warehouse {
+  id         String   @id @default(uuid())
+  name       String
+  location   String?
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  inventory_stocks      InventoryStock[]
+  transactions_from     MaterialTransaction[] @relation("FromWarehouse")
+  transactions_to       MaterialTransaction[] @relation("ToWarehouse")
+
+  @@map("warehouses")
+}
+
+model InventoryStock {
+  id             String  @id @default(uuid())
+  material_id    String
+  warehouse_id   String
+  stock_quantity Decimal @default(0) @db.Decimal(12, 3)
+  updated_at     DateTime @updatedAt
+
+  material  Material  @relation(fields: [material_id], references: [id])
+  warehouse Warehouse @relation(fields: [warehouse_id], references: [id])
+
+  @@unique([material_id, warehouse_id])
+  @@map("inventory_stocks")
+}
+
+model MaterialTransaction {
+  id                  String                  @id @default(uuid())
+  type                MaterialTransactionType
+  date                DateTime
+  project_id          String?
+  from_warehouse_id   String?
+  to_warehouse_id     String?
+  notes               String?
+  created_by_user_id  String?
+  created_at          DateTime                @default(now())
+  updated_at          DateTime                @updatedAt
+
+  project        Project?   @relation(fields: [project_id], references: [id])
+  from_warehouse Warehouse? @relation("FromWarehouse", fields: [from_warehouse_id], references: [id])
+  to_warehouse   Warehouse? @relation("ToWarehouse", fields: [to_warehouse_id], references: [id])
+  created_by     User?      @relation(fields: [created_by_user_id], references: [id])
+  details        MaterialTransactionDetail[]
+
+  @@map("material_transactions")
+}
+
+model MaterialTransactionDetail {
+  id                      String  @id @default(uuid())
+  material_transaction_id String
+  material_id             String
+  rab_budget_id           String?
+  quantity                Decimal @db.Decimal(12, 3)
+  unit_cost               Decimal @db.Decimal(18, 2)
+  created_at              DateTime @default(now())
+
+  material_transaction MaterialTransaction @relation(fields: [material_transaction_id], references: [id], onDelete: Cascade)
+  material             Material            @relation(fields: [material_id], references: [id])
+  rab_budget           RabBudget?          @relation(fields: [rab_budget_id], references: [id])
+
+  @@map("material_transaction_details")
+}
+
+// =============================================================================
+// MODULE 6 — PAYROLL & ALLOWANCE
+// =============================================================================
+
+enum EmployeeType {
+  Office_Staff
+  Project_Worker
+  Equipment_Operator
+}
+
+enum PayrollParameterType {
+  Meal_Allowance
+  Transport_Allowance
+  BPJS_TK        // Jamsostek (employer contribution)
+  BPJS_KES       // Health insurance (employer contribution)
+  PPh21          // Income tax
+}
+
+enum PayrollPeriodStatus {
+  Draft
+  Processed
+  Paid
+}
+
+model Employee {
+  id           String       @id @default(uuid())
+  employee_id  String       @unique // e.g. "EMP-0001"
+  name         String
+  contact_id   String?
+  type         EmployeeType
+  position     String?
+  base_salary  Decimal      @db.Decimal(18, 2)
+  bank_account String?
+  bank_name    String?
+  is_active    Boolean      @default(true)
+  join_date    DateTime?
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+
+  contact         Contact?        @relation(fields: [contact_id], references: [id])
+  timesheets      Timesheet[]
+  payroll_details PayrollDetail[]
+  user            User?
+
+  @@map("employees")
+}
+
+model PayrollParameter {
+  id              String               @id @default(uuid())
+  name            String
+  type            PayrollParameterType
+  value           Decimal              @db.Decimal(18, 4) // absolute amount or percentage (0-1)
+  is_percentage   Boolean              @default(false)   // if true, value is treated as rate
+  is_enabled      Boolean              @default(true)
+  applies_to_type EmployeeType?        // null = applies to all
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+
+  @@map("payroll_parameters")
+}
+
+model Timesheet {
+  id                  String   @id @default(uuid())
+  employee_id         String
+  project_id          String?
+  date                DateTime @db.Date
+  check_in            DateTime?
+  check_out           DateTime?
+  hours_worked        Decimal  @default(0) @db.Decimal(5, 2)
+  notes               String?
+  evidence_photo_path String?
+  submitted_by_user_id String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  employee      Employee @relation(fields: [employee_id], references: [id])
+  project       Project? @relation(fields: [project_id], references: [id])
+  submitted_by  User?    @relation("TimesheetSubmitter", fields: [submitted_by_user_id], references: [id])
+
+  @@unique([employee_id, date])
+  @@map("timesheets")
+}
+
+model PayrollPeriod {
+  id           String              @id @default(uuid())
+  period_month Int                 // 1-12
+  period_year  Int
+  status       PayrollPeriodStatus @default(Draft)
+  processed_at DateTime?
+  paid_at      DateTime?
+  notes        String?
+  created_at   DateTime            @default(now())
+  updated_at   DateTime            @updatedAt
+
+  payroll_details PayrollDetail[]
+
+  @@unique([period_month, period_year])
+  @@map("payroll_periods")
+}
+
+model PayrollDetail {
+  id                String  @id @default(uuid())
+  payroll_period_id String
+  employee_id       String
+  working_days      Int     @default(0)
+  basic_salary      Decimal @db.Decimal(18, 2)
+  meal_allowance    Decimal @default(0) @db.Decimal(18, 2)
+  transport_allowance Decimal @default(0) @db.Decimal(18, 2)
+  other_allowances  Decimal @default(0) @db.Decimal(18, 2)
+  gross_salary      Decimal @db.Decimal(18, 2)
+  bpjs_tk           Decimal @default(0) @db.Decimal(18, 2)
+  bpjs_kes          Decimal @default(0) @db.Decimal(18, 2)
+  pph21             Decimal @default(0) @db.Decimal(18, 2)
+  total_deductions  Decimal @default(0) @db.Decimal(18, 2)
+  net_salary        Decimal @db.Decimal(18, 2)
+  notes             String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  payroll_period PayrollPeriod @relation(fields: [payroll_period_id], references: [id])
+  employee       Employee      @relation(fields: [employee_id], references: [id])
+
+  @@unique([payroll_period_id, employee_id])
+  @@map("payroll_details")
+}
