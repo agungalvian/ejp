@@ -6,7 +6,7 @@ import fs from 'fs';
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
 
 // Ensure upload directories exist
-const dirs = ['receipts', 'timesheets', 'invoices', 'misc'];
+const dirs = ['receipts', 'timesheets', 'invoices', 'contracts', 'misc'];
 dirs.forEach((d) => {
   const p = path.join(UPLOAD_DIR, d);
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });

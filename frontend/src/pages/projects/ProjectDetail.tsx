@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, Plus, Building2, Receipt, Calendar, Info, FileText, Truck, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Building2, Receipt, Calendar, Info, FileText, Truck, CheckCircle, Download, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
@@ -357,6 +357,71 @@ export default function ProjectDetail() {
           ))}
           {!project.invoices?.length && (
             <p className="text-center py-4 text-slate-500 text-sm">No invoices yet</p>
+          )}
+        </div>
+      </div>
+
+      {/* Contracts */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <FileText size={14} className="text-purple-400" /> Kontrak Kerja Proyek
+          </h3>
+          <Link
+            to={`/contracts?project_id=${id}`}
+            className="text-xs text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1 hover:underline"
+          >
+            Kelola Kontrak <ExternalLink size={12} />
+          </Link>
+        </div>
+        <div className="space-y-3">
+          {project.contracts?.map((c: any) => {
+            const documentUrl = c.document_path ? (
+              import.meta.env.VITE_API_URL?.startsWith('http')
+                ? `${import.meta.env.VITE_API_URL.replace(/\/api$/, '')}${c.document_path}`
+                : `${window.location.origin}${c.document_path}`
+            ) : '';
+
+            return (
+              <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg bg-surface-200 hover:bg-surface-300 transition-colors gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white font-mono">{c.contract_number}</span>
+                    <span className={`badge ${
+                      c.status === 'Active' ? 'badge-blue' :
+                      c.status === 'Completed' ? 'badge-emerald' :
+                      c.status === 'Terminated' ? 'badge-red' : 'badge-slate'
+                    } text-[10px]`}>
+                      {c.status === 'Active' ? 'Aktif' :
+                       c.status === 'Completed' ? 'Selesai' :
+                       c.status === 'Terminated' ? 'Diputus' : 'Kedaluwarsa'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1 font-medium">{c.name}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Periode: {c.start_date ? new Date(c.start_date).toLocaleDateString('id-ID') : '—'} s.d {c.end_date ? new Date(c.end_date).toLocaleDateString('id-ID') : '—'}
+                  </p>
+                </div>
+                <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-center gap-2">
+                  <p className="text-sm font-mono font-bold text-brand-400">{formatIDR(Number(c.contract_value))}</p>
+                  {c.document_path ? (
+                    <a
+                      href={documentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] text-brand-400 hover:text-brand-300 font-semibold hover:underline"
+                    >
+                      <Download size={10} /> Unduh Berkas Kontrak
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-slate-500 italic">Berkas belum diunggah</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {!project.contracts?.length && (
+            <p className="text-center py-4 text-slate-500 text-sm">Belum ada kontrak kerja untuk proyek ini</p>
           )}
         </div>
       </div>

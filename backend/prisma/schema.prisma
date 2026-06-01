@@ -120,6 +120,7 @@ model Project {
   rental_logs          RentalLog[]
   timesheets           Timesheet[]
   material_transactions MaterialTransaction[]
+  contracts            Contract[]
 
   @@map("projects")
 }
@@ -547,11 +548,30 @@ model PayrollDetail {
   net_salary        Decimal @db.Decimal(18, 2)
   notes             String?
   created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  updated_at  DateTime @updatedAt
 
   payroll_period PayrollPeriod @relation(fields: [payroll_period_id], references: [id])
   employee       Employee      @relation(fields: [employee_id], references: [id])
 
   @@unique([payroll_period_id, employee_id])
   @@map("payroll_details")
+}
+
+model Contract {
+  id              String   @id @default(uuid())
+  contract_number String   @unique
+  name            String
+  project_id      String
+  contract_value  Decimal  @db.Decimal(18, 2)
+  start_date      DateTime
+  end_date        DateTime
+  document_path   String?  // path to the uploaded contract document (PDF/Image)
+  status          String   @default("Active") // Active, Terminated, Completed, Expired
+  description     String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  project         Project  @relation(fields: [project_id], references: [id])
+
+  @@map("contracts")
 }

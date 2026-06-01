@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, FileText, Truck, Package,
-  Clock, DollarSign, BookOpen, Users, ChevronRight, Layers, Shield, Contact,
+  Clock, DollarSign, BookOpen, Users, ChevronRight, Layers, Shield, Contact, FileCheck,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import logoImg from '../../assets/logo.png';
@@ -9,6 +9,7 @@ import logoImg from '../../assets/logo.png';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/projects', label: 'Proyek & RAB', icon: FolderOpen },
+  { to: '/contracts', label: 'Data Kontrak Kerja', icon: FileCheck },
   { to: '/contacts', label: 'Data Client & Vendor', icon: Contact },
   { to: '/invoices', label: 'Faktur & Tagihan', icon: FileText, roles: ['Admin', 'Staf_Keuangan', 'Manajer_Proyek'] },
   { to: '/equipment', label: 'Alat Berat', icon: Truck },

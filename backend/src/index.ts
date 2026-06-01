@@ -16,6 +16,7 @@ import equipmentRoutes from './routes/equipment.routes';
 import inventoryRoutes from './routes/inventory.routes';
 import payrollRoutes from './routes/payroll.routes';
 import ledgerRoutes from './routes/ledger.routes';
+import contractRoutes from './routes/contracts.routes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -55,6 +56,7 @@ app.use('/api/equipment', equipmentRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/ledger', ledgerRoutes);
+app.use('/api/contracts', contractRoutes);
 
 // ── Global Error Handler ──────────────────────────────────────────────────────
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

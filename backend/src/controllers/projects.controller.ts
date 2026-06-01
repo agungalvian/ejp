@@ -24,6 +24,7 @@ export const getProjectById = async (req: Request, res: Response) => {
       rab_budgets: { orderBy: { created_at: 'asc' } },
       invoices: { orderBy: { created_at: 'desc' } },
       rental_logs: { include: { equipment: { select: { name: true, asset_code: true } } } },
+      contracts: { orderBy: { contract_number: 'asc' } },
     },
   });
   res.json({ success: true, data: project });

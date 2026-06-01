@@ -22,9 +22,11 @@ export default function TopBar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  // Initialize theme from localStorage, default to dark mode (isLightMode = false)
+  // Initialize theme from localStorage, default to light mode (isLightMode = true)
   const [isLightMode, setIsLightMode] = useState(() => {
-    return localStorage.getItem('theme') === 'light';
+    const saved = localStorage.getItem('theme');
+    if (saved === null) return true; // Default to light mode
+    return saved === 'light';
   });
 
   useEffect(() => {

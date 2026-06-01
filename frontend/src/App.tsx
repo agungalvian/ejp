@@ -15,6 +15,7 @@ import LedgerPage from './pages/ledger/GeneralLedger';
 import ChartOfAccountsPage from './pages/ledger/ChartOfAccounts';
 import UserManagementPage from './pages/users/UserManagement';
 import ContactListPage from './pages/contacts/ContactList';
+import ContractListPage from './pages/contracts/ContractList';
 
 function RequireAuth({
   children,
@@ -70,6 +71,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
+          <Route path="contracts" element={<ContractListPage />} />
           <Route path="contacts" element={<ContactListPage />} />
           <Route
             path="invoices"
