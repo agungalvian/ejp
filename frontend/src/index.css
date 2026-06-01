@@ -189,6 +189,15 @@
     @apply text-brand-400;
   }
 
+  /* Hide scrollbar utility */
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   /* ── Page layout ─────────────────────────────────────────────── */
   .page-header {
     @apply flex items-center justify-between mb-6;
